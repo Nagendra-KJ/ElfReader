@@ -1,9 +1,11 @@
 CC =  gcc
 CFLAGS = -Wall -g -std=c99
+OBJFILE = ../Code_Example/hello_world_1.o
 
 .PHONY: all clean
 
 all: readelf
+	./readelf $(OBJFILE)
 
 utils.o: utils.c utils.h
 	$(CC) $(CFLAGS) -c -o utils.o utils.c
