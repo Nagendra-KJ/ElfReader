@@ -8,7 +8,7 @@ Elf64_Ehdr g_elf_header;
 Elf64_Shdr *g_elf_shdrs;
 Elf64_Xword g_numsh;
 Elf64_Word g_shstrndx;
-char *g_strtab;
+char *g_shstrtab;
 
 int main (int argc, char **argv)
 {
@@ -31,6 +31,7 @@ int main (int argc, char **argv)
     retval = read_elf_header();
     if (retval != EOK)
     {
+        eprintf(retval);
         return retval;
     }
 
@@ -50,6 +51,7 @@ int main (int argc, char **argv)
         retval = read_elf_shdrs(g_elf_header.e_shentsize, 1, g_elf_header.e_shoff, &first_shdr);
         if (retval != EOK)
         {
+            eprintf(retval);
             return retval;
         }
         g_numsh = first_shdr.sh_size;
@@ -70,14 +72,38 @@ int main (int argc, char **argv)
     }
 
     Elf64_Shdr strtab_shdr = g_elf_shdrs[g_shstrndx];
-    g_strtab = (char *) malloc(sizeof(char) * strtab_shdr.sh_size);
-    read_elf_section(strtab_shdr, g_strtab);
+    g_shstrtab = (char *) malloc(sizeof(char) * strtab_shdr.sh_size);
+    read_elf_section(strtab_shdr, g_shstrtab);
 
     for (Elf64_Xword i = 0; i < g_numsh; ++i)
     {
         Elf64_Shdr shdr = g_elf_shdrs[i];
         char buffer[shdr.sh_size];
-        read_elf_section(shdr, buffer);
+        if (shdr.sh_type == SHT_SYMTAB)
+        {
+            print_star();
+            printf("Printing Symbol Table\n");
+            Elf64_Xword num_syms = shdr.sh_size / shdr.sh_entsize;
+            Elf64_Sym symtab[num_syms];
+            Elf64_Shdr symstr = g_elf_shdrs[shdr.sh_link];
+            char strtab[symstr.sh_size];
+            read_elf_section(symstr, &strtab);
+            for (Elf64_Xword j = 0; j < num_syms; ++j)
+            {
+                retval = read_symtab(shdr, j, &symtab[j]);
+                if (retval != EOK)
+                {
+                    eprintf(retval);
+                    return retval;
+                }
+                print_star();
+                print_symtab(symtab[j], strtab);
+            }
+        }
+        else
+        {
+            read_elf_section(shdr, buffer);
+        }
         print_star();
         printf("Section %lld\n", i);
         print_section(shdr.sh_name, buffer, shdr.sh_size);
@@ -93,7 +119,6 @@ int read_elf_header()
     
     if (retval != EOK)
     {
-        eprintf(retval);
         return retval;
     }
 
@@ -110,7 +135,6 @@ int read_elf_shdrs(Elf64_Half ent_size, Elf64_Half num_ents, Elf64_Off offset, v
 
     if (!buffer)
     {
-        eprintf(-ENOMEM);
         return -ENOMEM;
     }
 
@@ -174,7 +198,7 @@ void print_section(Elf64_Word name, void *buffer, Elf64_Xword size)
 {
     char *data = (char *)buffer;
     
-    printf("Name: %s\n", &g_strtab[name]);
+    printf("Name: %s\n", &g_shstrtab[name]);
     printf("Size: %lld\n", size);
     printf("Data:\n");
 
@@ -199,4 +223,26 @@ int read_elf_section(Elf64_Shdr shdr, void *buffer)
     retval = fread(buffer, sizeof(char), size, g_elf_file);
     
     return retval == size ? EOK:ENOERR;
+}
+
+int read_symtab(Elf64_Shdr shdr, Elf64_Xword index, void *buffer)
+{
+    int retval = EOK;
+    Elf64_Off offset = shdr.sh_offset;
+    Elf64_Xword size = shdr.sh_entsize;
+
+    fseek(g_elf_file, offset + index * size, SEEK_SET);
+    retval = fread(buffer, sizeof(Elf64_Sym), 1, g_elf_file);
+
+    return retval == 1 ? EOK:-ENOERR;
+}
+
+void print_symtab(Elf64_Sym symtab, const char *strtab)
+{
+    printf("Name: %s\n", &strtab[symtab.st_name]);
+    printf("Info: %02x\n", symtab.st_info);
+    printf("Other: %02x\n", symtab.st_other);
+    printf("Section Header Index: %d\n", symtab.st_shndx);
+    printf("Value: %llx\n", symtab.st_value);
+    printf("Size: %lld\n", symtab.st_size);
 }

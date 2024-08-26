@@ -1,6 +1,7 @@
 CC =  gcc
 CFLAGS = -Wall -g -std=c99
 OBJFILE = ../Code_Example/hello_world_1.o
+DEBUG = lldb
 
 .PHONY: all clean
 
@@ -12,6 +13,9 @@ utils.o: utils.c utils.h
 
 readelf: readelf.c readelf.h utils.o
 	$(CC) $(CFLAGS) -o readelf readelf.c utils.o
+
+debug: readelf
+	$(DEBUG) ./readelf $(OBJFILE)
 
 clean:
 	rm readelf *.o

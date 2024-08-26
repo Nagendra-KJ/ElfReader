@@ -26,7 +26,7 @@ enum EIDATA {DATANONE, DATALSB, DATAMSB};
 
 enum RETURN {EOK, ENOERR, ENOFIL, ENOARG, ENOMEM, ENOMAG, ENOCLS, ENODAT, ENOVER, ENOABI, ENOABV, ENOPAD};
 
-enum SHT {SHT_NULL, SHT_STRTAB=3};
+enum SHT {SHT_NULL, SHT_SYMTAB=2, SHT_STRTAB=3};
 
 typedef struct {
     unsigned char e_ident[EI_NIDENT];
@@ -58,6 +58,15 @@ typedef struct {
     Elf64_Xword sh_entsize;
 } Elf64_Shdr;
 
+typedef struct {
+    Elf64_Word st_name;
+    unsigned char st_info;
+    unsigned char st_other;
+    Elf64_Half st_shndx;
+    Elf64_Addr st_value;
+    Elf64_Xword st_size;
+} Elf64_Sym;
+
 int verify_e_ident(unsigned char *buffer);
 int read_elf_header();
 int read_elf_shdrs(Elf64_Half ent_size, Elf64_Half num_ents, Elf64_Off offset, void *buffer);
@@ -65,3 +74,5 @@ void print_section(Elf64_Word name, void *buffer, Elf64_Xword size);
 void print_section_header(Elf64_Shdr shdr);
 void print_elf_header();
 int read_elf_section(Elf64_Shdr shdr, void *buffer);
+int read_symtab(Elf64_Shdr shdr, Elf64_Xword index, void *buffer);
+void print_symtab(Elf64_Sym symtab, const char *symstr);
