@@ -2,21 +2,27 @@ CC =  gcc
 CFLAGS = -Wall -g -std=c99
 OBJFILE = ../Code_Example/hello_world_1.o
 DEBUG = lldb
+SRC_DIR = ./src
+BUILD_DIR = ./build
+UTILS_DIR = ./utils
 
-.PHONY: all clean
+.PHONY: all clean build
 
 all: readelf
-	./readelf $(OBJFILE)
+	./$(BUILD_DIR)/readelf $(OBJFILE)
 
-utils.o: utils.c utils.h
-	$(CC) $(CFLAGS) -c -o utils.o utils.c
+utils.o: build
+	$(MAKE) -C $(UTILS_DIR) BUILD_DIR=$(abspath $(BUILD_DIR))
 
-readelf: readelf.c readelf.h utils.o
-	$(CC) $(CFLAGS) -o readelf readelf.c utils.o
+readelf: utils.o build
+	$(MAKE) -C $(SRC_DIR) BUILD_DIR=$(abspath $(BUILD_DIR)) UTILS_DIR=$(abspath $(UTILS_DIR))
 
 debug: readelf
-	$(DEBUG) ./readelf $(OBJFILE)
+	$(DEBUG) ./$(BUILD_DIR)/readelf $(OBJFILE)
+
+build:
+	mkdir -p $(BUILD_DIR)
 
 clean:
-	rm readelf *.o
+	rm -rf build
 	rm -rf readelf.dSYM
